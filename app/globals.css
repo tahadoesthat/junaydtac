@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  scroll-behavior: smooth;
+  overscroll-behavior-y: none;
+  background-color: #F8F8F6;
+  color: #0A0A0A;
+}
+
+@layer utilities {
+  .glassmorphism-monochrome {
+    @apply bg-ta-offwhite/10 backdrop-blur-md border border-ta-black/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)];
+  }
+}
