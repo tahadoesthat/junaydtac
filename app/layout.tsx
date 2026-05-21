@@ -12,8 +12,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${montserrat.variable} ${quicksand.variable} h-full selection:bg-ta-black selection:text-ta-offwhite`}>
-      <body className="h-full font-quicksand antialiased text-ta-black flex flex-col relative overflow-hidden">
+    <html lang="en" className={`${montserrat.variable} ${quicksand.variable} bg-ta-offwhite selection:bg-ta-black selection:text-ta-offwhite`}>
+      {/* Removed overflow-hidden here to restore scrolling to Phase 2, 3, and 4 */}
+      <body className="font-quicksand antialiased text-ta-black min-h-screen flex flex-col relative">
         {children}
       </body>
     </html>
