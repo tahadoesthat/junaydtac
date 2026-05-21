@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const DISCORD_WEBHOOK_URL = "[https://discord.com/api/webhooks/1507082690837483590/gLlRzknuyQaFtpLcQdSjOP1NCM_50PYH7SjBKglA-fWgnaQF2PtrhdMHwQwoZpxqvtop](https://discord.com/api/webhooks/1507082690837483590/gLlRzknuyQaFtpLcQdSjOP1NCM_50PYH7SjBKglA-fWgnaQF2PtrhdMHwQwoZpxqvtop)";
-
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -10,6 +8,9 @@ export async function POST(request: Request) {
         if (!name || !message || !contact) {
             return NextResponse.json({ error: 'Missing required validation parameters.' }, { status: 400 });
         }
+
+        // Your exact webhook URL
+        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1507082690837483590/gLlRzknuyQaFtpLcQdSjOP1NCM_50PYH7SjBKglA-fWgnaQF2PtrhdMHwQwoZpxqvtop";
 
         const discordPayload = {
             embeds: [
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
+        console.error("Webhook Execution Error:", error);
         return NextResponse.json({ error: 'Failed to route transmission.' }, { status: 500 });
     }
 }
