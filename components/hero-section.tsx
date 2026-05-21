@@ -4,80 +4,76 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 
 // --- Global Aesthetic Configuration ---
-// Boss requested a max of 30% for general lines for readability.
-// We scale based on Z-depth for realism.
-const GLOBAL_MESH_BASE_OPACITY = 0.3; 
-const GLOBAL_MESH_DOT_OPACITY = 0.5;
+const GLOBAL_EARTH_OPACITY = 0.3; // Max opacity for the Earth wireframe
+const GLOBAL_DNA_OPACITY = 0.08;  // Very low opacity for the background DNA structure
 
-// --- 3D Sculpture Engine (Version 3.0: High-Fidelity Contour) ---
-const generateSculptedHead = (radius: number) => {
-    const pts = [];
-    const numPoints = 300; // Optimal density for recognizable structure without clutter
+// --- 3D Architecture Engine: Earth & DNA ---
+const generateArchitecturalMeshes = (radius: number) => {
+    const points = [];
+    const edges = [];
+
+    // 1. GENERATE NETWORK EARTH (Fibonacci Sphere)
+    const numEarthPoints = 250;
+    const phi = Math.PI * (3 - Math.sqrt(5)); // Golden angle
     
-    // We are no longer morphing a sphere. We are plotting points along defined facial vectors.
-    for(let i = 0; i < numPoints; i++) {
-        const phi = Math.acos( -1 + ( 2 * i ) / numPoints );
-        const theta = Math.sqrt( numPoints * Math.PI ) * phi;
+    for (let i = 0; i < numEarthPoints; i++) {
+        const y = 1 - (i / (numEarthPoints - 1)) * 2; // y goes from 1 to -1
+        const r = Math.sqrt(1 - y * y); // radius at y
+        const theta = phi * i;
         
-        let x = radius * Math.cos(theta) * Math.sin(phi);
-        let y = radius * Math.cos(phi); 
-        let z = radius * Math.sin(theta) * Math.sin(phi);
-
-        // Architectural sculpting logic (based on standard facial landmarks)
-        // Adjust vertically (Y) for proportional head shape
-        y *= 1.25; 
-
-        // Morph based on orientation (Front Z+, Back Z-)
-        if (z > -radius * 0.1) {
-             // 1. FRONT FACE Contouring
-             
-             // Define Mid-line points more strongly
-             if (Math.abs(x) < radius * 0.2) { x *= 0.8; }
-
-             // Define Eyebrow ridges/brow line (Upper facial sector)
-             if (y < -radius * 0.2 && y > -radius * 0.5 ) {
-                 z *= 1.15; // Pull brow forward
-                 if (Math.abs(x) > radius * 0.3) { x *= 1.1; } // Define temples
-             }
-
-             // Define Nase/Nose bridge
-             if (y < radius * 0.2 && y > -radius * 0.3 && Math.abs(x) < radius * 0.15) {
-                 z *= 1.55; // Extrude nase forward strongly
-                 y += radius * 0.05; // Drop tip slightly
-                 if (Math.abs(x) > radius * 0.05) { z *= 1.1; } // define base
-             }
-
-             // Define Cheekbones
-             if (y < radius * 0.4 && y > -radius * 0.1 && Math.abs(x) > radius * 0.35) {
-                 z *= 1.2; // Pull cheekbones forward
-             }
-
-             // Define Jawline and Beard (Lower sector)
-             if (y > 0) {
-                 x *= (1 - 0.3 * (y/radius)); // Taper jaw severely
-                 if (z > 0 && Math.abs(x) < radius * 0.4) {
-                     y *= 1.4; // Beard extends vertically
-                     z *= 1.25; // Beard extends forward (creating defined beard contour)
-                 }
-                 // Neck taper
-                 if (z < 0) { x *= 0.9; }
-             }
-
-        } else {
-             // 2. BACK OF HEAD (Smoother, less defined)
-             x *= 0.95;
-             y *= 0.9;
-             z *= 0.85;
-        }
-
-        pts.push({ x, y, z, isEye: false });
+        const x = Math.cos(theta) * r;
+        const z = Math.sin(theta) * r;
+        
+        points.push({ x: x * radius, y: y * radius, z: z * radius, type: 'earth' });
     }
 
-    // Inject explicit tracking nodes (The Eyes) defined within the eye socket structure
-    pts.push({ x: -radius * 0.35, y: -radius * 0.15, z: radius * 1.0, isEye: true });
-    pts.push({ x: radius * 0.35, y: -radius * 0.15, z: radius * 1.0, isEye: true });
+    // Connect Earth points based on proximity to create the wireframe
+    const earthConnectionDist = radius * 0.35; 
+    for (let i = 0; i < numEarthPoints; i++) {
+        for (let j = i + 1; j < numEarthPoints; j++) {
+            const dx = points[i].x - points[j].x;
+            const dy = points[i].y - points[j].y;
+            const dz = points[i].z - points[j].z;
+            if (Math.sqrt(dx*dx + dy*dy + dz*dz) < earthConnectionDist) {
+                edges.push({ p1: i, p2: j, type: 'earth' });
+            }
+        }
+    }
 
-    return pts;
+    // 2. GENERATE BACKGROUND DNA HELIX
+    const dnaPtsStartIdx = points.length;
+    const numBasePairs = 80;
+    const dnaHeight = radius * 6; // Spans far beyond the screen height
+    const dnaRadius = radius * 0.9; // Wider than the earth
+    
+    for (let i = 0; i < numBasePairs; i++) {
+        const y = -dnaHeight/2 + (i / (numBasePairs - 1)) * dnaHeight;
+        const theta = i * 0.3; // Twist density
+
+        // Strand 1
+        const x1 = Math.cos(theta) * dnaRadius;
+        const z1 = Math.sin(theta) * dnaRadius;
+        // Strand 2 (opposite side)
+        const x2 = Math.cos(theta + Math.PI) * dnaRadius;
+        const z2 = Math.sin(theta + Math.PI) * dnaRadius;
+
+        const idx1 = dnaPtsStartIdx + i * 2;
+        const idx2 = dnaPtsStartIdx + i * 2 + 1;
+
+        points.push({ x: x1, y: y, z: z1, type: 'dna' });
+        points.push({ x: x2, y: y, z: z2, type: 'dna' });
+
+        // Connect the base pair horizontally
+        edges.push({ p1: idx1, p2: idx2, type: 'dna' });
+
+        // Connect the vertical backbone
+        if (i > 0) {
+            edges.push({ p1: idx1, p2: idx1 - 2, type: 'dna' });
+            edges.push({ p1: idx2, p2: idx2 - 2, type: 'dna' });
+        }
+    }
+
+    return { points3D: points, edges: edges };
 };
 
 const HeroSection = () => {
@@ -95,25 +91,12 @@ const HeroSection = () => {
         const h = typeof window !== 'undefined' ? window.innerHeight : 800;
         const radius = Math.min(w, h) * 0.35; 
         
-        const pts = generateSculptedHead(radius);
-        const edgesList = [];
-        
-        const connectionDist = radius * 0.42; 
-        for (let i = 0; i < pts.length; i++) {
-            for (let j = i + 1; j < pts.length; j++) {
-                const dx = pts[i].x - pts[j].x;
-                const dy = pts[i].y - pts[j].y;
-                const dz = pts[i].z - pts[j].z;
-                if (Math.sqrt(dx*dx + dy*dy + dz*dz) < connectionDist) {
-                    edgesList.push({ p1: i, p2: j });
-                }
-            }
-        }
-        return { points3D: pts, edges: edgesList };
+        return generateArchitecturalMeshes(radius);
     }, []);
 
     useEffect(() => {
         let animationFrameId: number;
+        let time = 0;
         
         const handleMouseMove = (e: MouseEvent) => {
             mouseX.set(e.clientX);
@@ -124,56 +107,66 @@ const HeroSection = () => {
 
         const renderLoop = () => {
             if (!containerRef.current) return;
+            time += 0.003; // Global time step for auto-rotation
+
             const w = window.innerWidth;
             const h = window.innerHeight;
             const centerX = w / 2;
             const centerY = h / 2;
             const radius = Math.min(w, h) * 0.35;
 
-            // Full 360 degree rotational mapping (Yaw/Pitch)
-            const targetRotY = (smoothMouseX.get() / w - 0.5) * Math.PI * 2.5; 
-            const targetRotX = (smoothMouseY.get() / h - 0.5) * Math.PI * 0.6; 
+            // Earth Rotation Logic: Mouse Tracking + Continuous Auto-Rotation
+            const earthTargetRotY = (smoothMouseX.get() / w - 0.5) * Math.PI + time; 
+            const earthTargetRotX = (smoothMouseY.get() / h - 0.5) * Math.PI * 0.5; 
+
+            // DNA Rotation Logic: Continuous slow rotation + slight architectural tilt
+            const dnaRotY = -time * 1.2; // Rotates in opposite direction
+            const dnaTiltX = Math.PI * 0.15; // Tilted slightly on the Z-axis
 
             const projectedPoints = points3D.map((p, i) => {
-                // Apply Rotations
-                const x1 = p.x * Math.cos(targetRotY) - p.z * Math.sin(targetRotY);
-                const z1 = p.x * Math.sin(targetRotY) + p.z * Math.cos(targetRotY);
+                let rx, ry, rz;
 
-                const y2 = p.y * Math.cos(targetRotX) - z1 * Math.sin(targetRotX);
-                const z2 = p.y * Math.sin(targetRotX) + z1 * Math.cos(targetRotX);
+                if (p.type === 'earth') {
+                    // Apply Earth Yaw and Pitch
+                    const x1 = p.x * Math.cos(earthTargetRotY) - p.z * Math.sin(earthTargetRotY);
+                    const z1 = p.x * Math.sin(earthTargetRotY) + p.z * Math.cos(earthTargetRotY);
 
-                // Eye Tracking Offset
-                let finalX = x1;
-                let finalY = y2;
-                if (p.isEye) {
-                    finalX += (smoothMouseX.get() / w - 0.5) * 60;
-                    finalY += (smoothMouseY.get() / h - 0.5) * 60;
+                    rx = x1;
+                    ry = p.y * Math.cos(earthTargetRotX) - z1 * Math.sin(earthTargetRotX);
+                    rz = p.y * Math.sin(earthTargetRotX) + z1 * Math.cos(earthTargetRotX);
+                } else {
+                    // Apply DNA Yaw and Tilt
+                    const x1 = p.x * Math.cos(dnaRotY) - p.z * Math.sin(dnaRotY);
+                    const z1 = p.x * Math.sin(dnaRotY) + p.z * Math.cos(dnaRotY);
+
+                    rx = x1;
+                    ry = p.y * Math.cos(dnaTiltX) - z1 * Math.sin(dnaTiltX);
+                    rz = p.y * Math.sin(dnaTiltX) + z1 * Math.cos(dnaTiltX);
                 }
 
                 // Perspective Projection
                 const fl = 1200; 
-                const scale = fl / (fl - z2); 
+                const scale = fl / (fl - rz); 
                 
-                const projX = centerX + finalX * scale;
-                const projY = centerY + finalY * scale;
+                const projX = centerX + rx * scale;
+                const projY = centerY + ry * scale;
 
-                // Mutate DOM Nodes directly for 60fps performance
+                // Mutate DOM Nodes (Circles)
                 if (circleRefs.current[i]) {
                     circleRefs.current[i]!.setAttribute('cx', projX.toString());
                     circleRefs.current[i]!.setAttribute('cy', projY.toString());
                     
-                    // Force the overall mesh dot opacity to 50% max (fading to 10% in the back)
-                    const normalizedZ = (z2 + radius) / (radius * 2);
-                    const depthOpacity = Math.max(0.1, Math.min(1, normalizedZ));
-                    const finalDotOpacity = depthOpacity * GLOBAL_MESH_DOT_OPACITY; // Max 0.5
+                    const normalizedZ = (rz + radius) / (radius * 2);
+                    const depthOpacity = Math.max(0.05, Math.min(1, normalizedZ));
                     
-                    circleRefs.current[i]!.setAttribute('opacity', p.isEye ? '1' : finalDotOpacity.toString());
+                    const maxOpacity = p.type === 'earth' ? GLOBAL_EARTH_OPACITY : GLOBAL_DNA_OPACITY;
+                    circleRefs.current[i]!.setAttribute('opacity', (depthOpacity * maxOpacity).toString());
                 }
 
-                return { x: projX, y: projY, z: z2, isEye: p.isEye };
+                return { x: projX, y: projY, z: rz, type: p.type };
             });
 
-            // Mutate Lines
+            // Mutate Lines (Edges)
             for (let i = 0; i < edges.length; i++) {
                 const edge = edges[i];
                 const p1 = projectedPoints[edge.p1];
@@ -185,13 +178,13 @@ const HeroSection = () => {
                     lineRefs.current[i]!.setAttribute('x2', p2.x.toString());
                     lineRefs.current[i]!.setAttribute('y2', p2.y.toString());
                     
-                    // Force the general line opacity to 30% max (fading to 5% in the back)
+                    // Opacity based on depth and type
                     const avgZ = (p1.z + p2.z) / 2;
                     const normalizedZ = (avgZ + radius) / (radius * 2);
                     const depthOpacity = Math.max(0.05, Math.min(1, normalizedZ));
-                    const finalLineOpacity = depthOpacity * GLOBAL_MESH_BASE_OPACITY; // Max 0.3
                     
-                    lineRefs.current[i]!.setAttribute('stroke-opacity', finalLineOpacity.toString());
+                    const maxOpacity = edge.type === 'earth' ? GLOBAL_EARTH_OPACITY : GLOBAL_DNA_OPACITY;
+                    lineRefs.current[i]!.setAttribute('stroke-opacity', (depthOpacity * maxOpacity).toString());
                 }
             }
 
@@ -205,15 +198,15 @@ const HeroSection = () => {
   return (
     <section ref={containerRef} className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-ta-offwhite border-b-2 border-ta-black z-0">
         
-        {/* Layer 0: Centered 360 Sculpture Mesh (Strict 30% Max Visibility for Lines) */}
-        <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none mix-blend-multiply opacity-80">
+        {/* Layer 0: Centered 360 Architecture (Earth + DNA) */}
+        <svg className="absolute inset-0 w-full h-full z-0 pointer-events-none mix-blend-multiply">
             <g>
                 {edges.map((edge, i) => (
                     <line 
                         key={`edge-${i}`} 
                         ref={el => { lineRefs.current[i] = el; }} 
                         stroke="#0A0A0A" 
-                        strokeWidth="1.2" 
+                        strokeWidth={edge.type === 'earth' ? "1.2" : "1.5"} 
                     />
                 ))}
             </g>
@@ -222,9 +215,8 @@ const HeroSection = () => {
                     <circle 
                         key={`node-${i}`} 
                         ref={el => { circleRefs.current[i] = el; }} 
-                        r={p.isEye ? "6" : "2.5"} 
+                        r={p.type === 'earth' ? "2" : "3"} 
                         fill="#0A0A0A" 
-                        className={p.isEye ? "animate-pulse" : ""}
                     />
                 ))}
             </g>
